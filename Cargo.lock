@@ -101,6 +101,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "arceos-udpclient"
+version = "0.1.0"
+dependencies = [
+ "libax",
+]
+
+[[package]]
 name = "arceos-yield"
 version = "0.1.0"
 dependencies = [
@@ -621,6 +628,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e15e994575e38332cf4a2dc9dc745ff6a65695d37a41e00efadd57fcd42c1ba4"
 dependencies = [
  "thiserror",
+]
+
+[[package]]
+name = "dnstest"
+version = "0.1.0"
+dependencies = [
+ "libax",
 ]
 
 [[package]]

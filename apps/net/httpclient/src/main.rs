@@ -9,10 +9,10 @@ use core::str::FromStr;
 use libax::io::{self, prelude::*};
 use libax::net::{IpAddr, TcpStream};
 
-const DEST_IP: &str = "49.12.234.183"; // ident.me
+const DEST_IP: &str = "39.156.66.10"; // ident.me
 const REQUEST: &str = "\
 GET / HTTP/1.1\r\n\
-Host: ident.me\r\n\
+Host: www.baidu.com\r\n\
 Accept: */*\r\n\
 \r\n";
 

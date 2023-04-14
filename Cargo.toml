@@ -8,11 +8,13 @@ members = [
     "apps/fs/shell",
     "apps/net/echoserver",
     "apps/net/httpclient",
+    "apps/net/udpclient",
     "apps/net/httpserver",
+    "apps/net/dnstest",
     "apps/task/parallel",
     "apps/task/sleep",
     "apps/task/yield",
-
+    
     "crates/allocator",
     "crates/arm_gic",
     "crates/axerrno",

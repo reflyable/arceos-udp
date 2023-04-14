@@ -12,8 +12,12 @@ cfg_if::cfg_if! {
     }
 }
 
+pub use self::net_impl::DnsSocket;
 pub use self::net_impl::TcpSocket;
-pub use smoltcp::wire::{IpAddress as IpAddr, IpEndpoint as SocketAddr, Ipv4Address as Ipv4Addr};
+pub use self::net_impl::UdpSocket;
+pub use smoltcp::wire::{
+    DnsQueryType, IpAddress as IpAddr, IpEndpoint as SocketAddr, Ipv4Address as Ipv4Addr,
+};
 
 use axdriver::NetDevices;
 use driver_common::{BaseDriverOps, DeviceType};

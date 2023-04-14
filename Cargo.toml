@@ -10,7 +10,7 @@ members = [
     "apps/net/httpclient",
     "apps/net/udpclient",
     "apps/net/httpserver",
-    "apps/net/dnstest",
+    "apps/net/dns-httpclient",
     "apps/task/parallel",
     "apps/task/sleep",
     "apps/task/yield",

@@ -9,12 +9,13 @@ use core::str::FromStr;
 use libax::io::{self, prelude::*};
 use libax::net::{IpAddr, TcpStream};
 
-const DEST_IP: &str = "39.156.66.10"; // ident.me
+const DEST_IP: &str = "49.12.234.183"; // ident.me
 const REQUEST: &str = "\
 GET / HTTP/1.1\r\n\
-Host: www.baidu.com\r\n\
+Host: ident.me\r\n\
 Accept: */*\r\n\
 \r\n";
+
 
 fn client() -> io::Result {
     let (addr, port) = (IpAddr::from_str(DEST_IP).unwrap(), 80);

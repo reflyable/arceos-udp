@@ -2,7 +2,7 @@
 name = "arceos-udpclient"
 version = "0.1.0"
 edition = "2021"
-
+authors = ["Dashuai Wu"]
 
 [dependencies]
 libax = { path = "../../../ulib/libax", features = ["paging", "multitask", "net"] }

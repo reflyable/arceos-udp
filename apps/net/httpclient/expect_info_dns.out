@@ -25,7 +25,7 @@ created net interface "eth0":
 Initialize interrupt handlers...
 Primary CPU 0 init OK.
 Hello, simple http client!
-IP:93.184.216.34
+www.example.com IP:93.184.216.34
 
 <!doctype html>
 <html>

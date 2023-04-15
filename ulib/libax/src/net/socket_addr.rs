@@ -12,18 +12,26 @@ use axnet::{IpAddr, SocketAddr};
 
 use crate::io;
 
-use super::resolve_socket_addr;
+use axnet::DnsSocket;
+
+fn resolve_socket_addr(name: &str) -> io::Result<alloc::vec::Vec<IpAddr>> {
+    let socket = DnsSocket::new();
+    socket.query(name, axnet::DnsQueryType::A)
+}
+
 pub trait ToSocketAddrs {
     type Iter: Iterator<Item = SocketAddr>;
 
     fn to_socket_addrs(&self) -> io::Result<Self::Iter>;
 }
+
 impl ToSocketAddrs for SocketAddr {
     type Iter = option::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<option::IntoIter<SocketAddr>> {
         Ok(Some(*self).into_iter())
     }
 }
+
 impl ToSocketAddrs for (IpAddr, u16) {
     type Iter = option::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<option::IntoIter<SocketAddr>> {
@@ -31,6 +39,7 @@ impl ToSocketAddrs for (IpAddr, u16) {
         SocketAddr::new(ip, port).to_socket_addrs()
     }
 }
+
 impl<'a> ToSocketAddrs for &'a [SocketAddr] {
     type Iter = iter::Cloned<slice::Iter<'a, SocketAddr>>;
 
@@ -45,6 +54,7 @@ impl<T: ToSocketAddrs + ?Sized> ToSocketAddrs for &T {
         (**self).to_socket_addrs()
     }
 }
+
 impl ToSocketAddrs for (&str, u16) {
     type Iter = vec::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
@@ -67,6 +77,7 @@ impl ToSocketAddrs for (&str, u16) {
             .into_iter())
     }
 }
+
 impl ToSocketAddrs for str {
     type Iter = vec::IntoIter<SocketAddr>;
 

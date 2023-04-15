@@ -38,13 +38,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "arceos-dns-httpclient"
-version = "0.1.0"
-dependencies = [
- "libax",
-]
-
-[[package]]
 name = "arceos-echoserver"
 version = "0.1.0"
 dependencies = [
@@ -108,7 +101,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "arceos-udpclient"
+name = "arceos-udpserver"
 version = "0.1.0"
 dependencies = [
  "libax",

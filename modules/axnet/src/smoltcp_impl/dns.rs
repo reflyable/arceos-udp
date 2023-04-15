@@ -8,7 +8,7 @@ use smoltcp::wire::{DnsQueryType, IpAddress};
 use super::{SocketSetWrapper, ETH0, SOCKET_SET};
 
 pub struct DnsSocket {
-    handle: Option<SocketHandle>, // `None` if is listening
+    handle: Option<SocketHandle>,
 }
 
 impl DnsSocket {
@@ -18,11 +18,13 @@ impl DnsSocket {
         let handle = Some(SOCKET_SET.add(socket));
         Self { handle }
     }
+
     pub fn update_servers(self, servers: &[smoltcp::wire::IpAddress]) {
         SOCKET_SET.with_socket_mut::<dns::Socket, _, _>(self.handle.unwrap(), |socket| {
             socket.update_servers(servers)
         });
     }
+
     pub fn query(&self, name: &str, query_type: DnsQueryType) -> AxResult<Vec<IpAddress>> {
         // let local_addr = self.local_addr.unwrap_or_else(f);
         let handle = self.handle.ok_or_else(|| ax_err_type!(InvalidInput))?;
@@ -63,6 +65,7 @@ impl DnsSocket {
         }
     }
 }
+
 impl Drop for DnsSocket {
     fn drop(&mut self) {
         if let Some(handle) = self.handle {
@@ -70,25 +73,3 @@ impl Drop for DnsSocket {
         }
     }
 }
-// fn get_ephemeral_port() -> AxResult<u16> {
-//     const PORT_START: u16 = 0xc000;
-//     const PORT_END: u16 = 0xffff;
-//     static CURR: Mutex<u16> = Mutex::new(PORT_START);
-
-//     let mut curr = CURR.lock();
-//     let mut tries = 0;
-//     // TODO: more robust
-//     while tries <= PORT_END - PORT_START {
-//         let port = *curr;
-//         if *curr == PORT_END {
-//             *curr = PORT_START;
-//         } else {
-//             *curr += 1;
-//         }
-//         if LISTEN_TABLE.can_listen(port) {
-//             return Ok(port);
-//         }
-//         tries += 1;
-//     }
-//     ax_err!(NoMemory, "no avaliable ports!")
-// }

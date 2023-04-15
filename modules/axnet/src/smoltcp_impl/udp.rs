@@ -21,9 +21,11 @@ impl UdpSocket {
             local_addr: None,
         }
     }
+
     pub fn local_addr(&self) -> AxResult<SocketAddr> {
         self.local_addr.ok_or(AxError::NotConnected)
     }
+
     pub fn bind(&mut self, addr: SocketAddr) -> AxResult {
         debug!("{:?}", addr);
         let handle = self
@@ -32,10 +34,6 @@ impl UdpSocket {
         if self.local_addr.is_some() {
             return ax_err!(InvalidInput, "socket bind() failed: already bound");
         }
-        // let mut addr = addr;
-        // if addr.port == 0 {
-        //     addr.port = get_ephemeral_port()?;
-        // }
         debug!("{:?}", addr);
         SOCKET_SET.with_socket_mut::<udp::Socket, _, _>(handle, |socket| {
             socket.bind(addr).or_else(|e| match e {
@@ -51,8 +49,8 @@ impl UdpSocket {
         self.local_addr = Some(addr);
         Ok(())
     }
+
     pub fn sendto(&self, buf: &[u8], addr: SocketAddr) -> AxResult<usize> {
-        // let local_addr = self.local_addr.unwrap_or_else(f);
         let handle = self
             .handle
             .ok_or_else(|| ax_err_type!(InvalidInput, "socket bind() failed"))?;
@@ -86,6 +84,7 @@ impl UdpSocket {
             }
         }
     }
+
     pub fn recvfrom(&self, buf: &mut [u8]) -> AxResult<(usize, SocketAddr)> {
         let handle = self
             .handle
@@ -117,6 +116,7 @@ impl UdpSocket {
             }
         }
     }
+
     pub fn shutdown(&self) -> AxResult {
         SOCKET_SET.poll_interfaces();
         if let Some(handle) = self.handle {
@@ -130,6 +130,7 @@ impl UdpSocket {
         }
         Ok(())
     }
+
     pub fn peekfrom(&self, buf: &mut [u8]) -> AxResult<(usize, SocketAddr)> {
         let handle = self
             .handle
@@ -162,6 +163,7 @@ impl UdpSocket {
         }
     }
 }
+
 impl Drop for UdpSocket {
     fn drop(&mut self) {
         self.shutdown().ok();
@@ -170,25 +172,3 @@ impl Drop for UdpSocket {
         }
     }
 }
-// fn get_ephemeral_port() -> AxResult<u16> {
-//     const PORT_START: u16 = 0xc000;
-//     const PORT_END: u16 = 0xffff;
-//     static CURR: Mutex<u16> = Mutex::new(PORT_START);
-
-//     let mut curr = CURR.lock();
-//     let mut tries = 0;
-//     // TODO: more robust
-//     while tries <= PORT_END - PORT_START {
-//         let port = *curr;
-//         if *curr == PORT_END {
-//             *curr = PORT_START;
-//         } else {
-//             *curr += 1;
-//         }
-//         if LISTEN_TABLE.can_listen(port) {
-//             return Ok(port);
-//         }
-//         tries += 1;
-//     }
-//     ax_err!(NoMemory, "no avaliable ports!")
-// }

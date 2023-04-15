@@ -16,7 +16,6 @@ Host: ident.me\r\n\
 Accept: */*\r\n\
 \r\n";
 
-
 fn client() -> io::Result {
     let (addr, port) = (IpAddr::from_str(DEST_IP).unwrap(), 80);
     let mut stream = TcpStream::connect((addr, port).into())?;

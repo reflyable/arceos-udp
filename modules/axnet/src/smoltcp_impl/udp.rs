@@ -5,13 +5,20 @@ use smoltcp::socket::udp::{self, BindError, SendError};
 
 use super::{SocketSetWrapper, SOCKET_SET};
 use crate::SocketAddr;
+/// A UDP socket that provides POSIX-like APIs.
+///
 
+/// [`bind`]: UDPSocket::bind
+/// [`sendto`]: UDPSocket::sendto
+/// [`recvfrom`]: UDPSocket::recvfrom
+/// [`peekfrom`]: UDPSocket::peekfrom
 pub struct UdpSocket {
     handle: Option<SocketHandle>, // `None` if is listening
     local_addr: Option<SocketAddr>,
 }
 
 impl UdpSocket {
+    /// Creates a new UDP socket.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let socket = SocketSetWrapper::new_udp_socket();
@@ -21,11 +28,15 @@ impl UdpSocket {
             local_addr: None,
         }
     }
-
+    /// Returns the local address and port, or
+    /// [`Err(NotConnected)`](AxError::NotConnected) if not connected.
     pub fn local_addr(&self) -> AxResult<SocketAddr> {
         self.local_addr.ok_or(AxError::NotConnected)
     }
-
+    /// Binds an unbound socket to the given address and port.
+    ///
+    /// It's must be called before [`sendto`](Self::sendto) and
+    /// [`recvfrom`](Self::recvfrom).
     pub fn bind(&mut self, addr: SocketAddr) -> AxResult {
         debug!("{:?}", addr);
         let handle = self
@@ -49,7 +60,7 @@ impl UdpSocket {
         self.local_addr = Some(addr);
         Ok(())
     }
-
+    /// Transmits data in the given buffer to the given address.
     pub fn sendto(&self, buf: &[u8], addr: SocketAddr) -> AxResult<usize> {
         let handle = self
             .handle
@@ -84,7 +95,7 @@ impl UdpSocket {
             }
         }
     }
-
+    /// Receives data from the socket, stores it in the given buffer.
     pub fn recvfrom(&self, buf: &mut [u8]) -> AxResult<(usize, SocketAddr)> {
         let handle = self
             .handle
@@ -116,7 +127,7 @@ impl UdpSocket {
             }
         }
     }
-
+    /// Close the socket.
     pub fn shutdown(&self) -> AxResult {
         SOCKET_SET.poll_interfaces();
         if let Some(handle) = self.handle {
@@ -130,7 +141,7 @@ impl UdpSocket {
         }
         Ok(())
     }
-
+    /// Receives data from the socket, stores it in the given buffer, without removing it from the queue.
     pub fn peekfrom(&self, buf: &mut [u8]) -> AxResult<(usize, SocketAddr)> {
         let handle = self
             .handle

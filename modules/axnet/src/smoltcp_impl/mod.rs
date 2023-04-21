@@ -20,7 +20,7 @@ use smoltcp::wire::{EthernetAddress, HardwareAddress, IpAddress, IpCidr};
 
 use self::listen_table::ListenTable;
 
-pub use self::dns::DnsSocket;
+pub use self::dns::resolve_socket_addr;
 pub use self::tcp::TcpSocket;
 pub use self::udp::UdpSocket;
 
@@ -275,7 +275,6 @@ fn snoop_tcp_packet(buf: &[u8]) -> Result<(), smoltcp::wire::Error> {
             // create a socket for the first incoming TCP packet, as the later accept() returns.
             LISTEN_TABLE.incoming_tcp_packet(src_addr, dst_addr);
         }
-    } else if ipv4_packet.next_header() == IpProtocol::Udp {
     }
     Ok(())
 }

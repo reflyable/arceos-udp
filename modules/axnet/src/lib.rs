@@ -31,7 +31,7 @@ cfg_if::cfg_if! {
     }
 }
 
-pub use self::net_impl::DnsSocket;
+pub use self::net_impl::resolve_socket_addr;
 pub use self::net_impl::TcpSocket;
 pub use self::net_impl::UdpSocket;
 pub use smoltcp::wire::{

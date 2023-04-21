@@ -1,7 +1,8 @@
 use crate::io;
 use axnet::SocketAddr;
 use axnet::UdpSocket as _UdpSocket;
-/// A TCP socket.
+
+/// A Udp socket.
 pub struct UdpSocket {
     socket: _UdpSocket,
 }
@@ -17,11 +18,11 @@ impl UdpSocket {
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         self.socket.local_addr()
     }
-    ///Receives a message on the socket.
+    /// Receives a message on the socket.
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.socket.recvfrom(buf)
     }
-    ///Sends data on the socket to the given address.
+    /// Sends data on the socket to the given address.
     pub fn send_to(&self, buf: &[u8], addr: SocketAddr) -> io::Result<usize> {
         self.socket.sendto(buf, addr)
     }

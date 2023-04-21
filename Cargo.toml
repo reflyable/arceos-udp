@@ -7,14 +7,13 @@ members = [
     "apps/memtest",
     "apps/fs/shell",
     "apps/net/echoserver",
-    # "apps/net/httpclient",
+    "apps/net/httpclient",
     "apps/net/udpserver",
     "apps/net/httpserver",
-    "apps/net/httpclient",
     "apps/task/parallel",
     "apps/task/sleep",
     "apps/task/yield",
-    
+
     "crates/allocator",
     "crates/arm_gic",
     "crates/axerrno",

@@ -12,17 +12,13 @@ use axnet::{IpAddr, SocketAddr};
 
 use crate::io;
 
-use axnet::DnsSocket;
+use axnet::resolve_socket_addr;
 
-fn resolve_socket_addr(name: &str) -> io::Result<alloc::vec::Vec<IpAddr>> {
-    let socket = DnsSocket::new();
-    socket.query(name, axnet::DnsQueryType::A)
-}
 /// A trait for objects which can be converted or resolved to one or more SocketAddr values.
 pub trait ToSocketAddrs {
-    ///Returned iterator over socket addresses which this type may correspond to.
+    /// Returned iterator over socket addresses which this type may correspond to.
     type Iter: Iterator<Item = SocketAddr>;
-    ///Converts this object to an iterator of resolved SocketAddrs.
+    /// Converts this object to an iterator of resolved SocketAddrs.
     fn to_socket_addrs(&self) -> io::Result<Self::Iter>;
 }
 

@@ -12,7 +12,7 @@ use super::{SocketSetWrapper, ETH0, SOCKET_SET};
 
 /// [`update_servers`]: UDPSocket::update_servers
 /// [`query`]: UDPSocket::query
-pub struct DnsSocket {
+struct DnsSocket {
     handle: Option<SocketHandle>,
 }
 
@@ -78,4 +78,9 @@ impl Drop for DnsSocket {
             SOCKET_SET.remove(handle);
         }
     }
+}
+
+pub fn resolve_socket_addr(name: &str) -> AxResult<alloc::vec::Vec<IpAddress>> {
+    let socket = DnsSocket::new();
+    socket.query(name, DnsQueryType::A)
 }

@@ -5,10 +5,7 @@ use smoltcp::socket::udp::{self, BindError, SendError};
 
 use super::{SocketSetWrapper, SOCKET_SET};
 use crate::SocketAddr;
-/// A UDP socket that provides POSIX-like APIs.
-///
 
-/// [`bind`]: UDPSocket::bind
 /// [`sendto`]: UDPSocket::sendto
 /// [`recvfrom`]: UDPSocket::recvfrom
 /// [`peekfrom`]: UDPSocket::peekfrom
@@ -38,14 +35,12 @@ impl UdpSocket {
     /// It's must be called before [`sendto`](Self::sendto) and
     /// [`recvfrom`](Self::recvfrom).
     pub fn bind(&mut self, addr: SocketAddr) -> AxResult {
-        debug!("{:?}", addr);
         let handle = self
             .handle
             .ok_or_else(|| ax_err_type!(InvalidInput, "socket bind() failed"))?;
         if self.local_addr.is_some() {
             return ax_err!(InvalidInput, "socket bind() failed: already bound");
         }
-        debug!("{:?}", addr);
         SOCKET_SET.with_socket_mut::<udp::Socket, _, _>(handle, |socket| {
             socket.bind(addr).or_else(|e| match e {
                 BindError::InvalidState => {
@@ -86,7 +81,6 @@ impl UdpSocket {
                 }
             }) {
                 Ok(n) => {
-                    debug!("here");
                     SOCKET_SET.poll_interfaces();
                     return Ok(n);
                 }

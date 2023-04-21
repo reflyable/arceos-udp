@@ -14,11 +14,11 @@ use crate::io;
 
 use axnet::resolve_socket_addr;
 
-/// A trait for objects which can be converted or resolved to one or more SocketAddr values.
+/// A trait for objects which can be converted or resolved to one or more [`SocketAddr`] values.
 pub trait ToSocketAddrs {
     /// Returned iterator over socket addresses which this type may correspond to.
     type Iter: Iterator<Item = SocketAddr>;
-    /// Converts this object to an iterator of resolved SocketAddrs.
+    /// Converts this object to an iterator of resolved [`SocketAddr`]s.
     fn to_socket_addrs(&self) -> io::Result<Self::Iter>;
 }
 
@@ -62,10 +62,6 @@ impl ToSocketAddrs for (&str, u16) {
             let addr = SocketAddr::new(addr, port);
             return Ok(vec![addr].into_iter());
         }
-        // if let Ok(addr) = host.parse::<Ipv6Addr>() {
-        //     let addr = SocketAddrV6::new(addr, port, 0, 0);
-        //     return Ok(vec![SocketAddr::V6(addr)].into_iter());
-        // }
 
         Ok(resolve_socket_addr(host)?
             .iter()

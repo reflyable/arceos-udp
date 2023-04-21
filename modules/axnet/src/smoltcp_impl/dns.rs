@@ -7,10 +7,6 @@ use smoltcp::wire::{DnsQueryType, IpAddress};
 
 use super::{SocketSetWrapper, ETH0, SOCKET_SET};
 
-/// A DNS socket to simplify DNS query.
-///
-
-/// [`update_servers`]: UDPSocket::update_servers
 /// [`query`]: UDPSocket::query
 struct DnsSocket {
     handle: Option<SocketHandle>,
@@ -24,12 +20,15 @@ impl DnsSocket {
         let handle = Some(SOCKET_SET.add(socket));
         Self { handle }
     }
+
+    #[allow(dead_code)]
     /// Update the list of DNS servers, will replace all existing servers.
     pub fn update_servers(self, servers: &[smoltcp::wire::IpAddress]) {
         SOCKET_SET.with_socket_mut::<dns::Socket, _, _>(self.handle.unwrap(), |socket| {
             socket.update_servers(servers)
         });
     }
+
     /// Query a address with given DNS query type.
     pub fn query(&self, name: &str, query_type: DnsQueryType) -> AxResult<Vec<IpAddress>> {
         // let local_addr = self.local_addr.unwrap_or_else(f);

@@ -13,10 +13,10 @@ use libax::net::{IpAddr, UdpSocket};
 const LOCAL_IP: &str = "10.0.2.15";
 const LOCAL_PORT: u16 = 5555;
 
-fn accept_loop() -> io::Result {
+fn recive_loop() -> io::Result {
     let (addr, port) = (IpAddr::from_str(LOCAL_IP).unwrap(), LOCAL_PORT);
     let socket = UdpSocket::bind((addr, port).into())?;
-    println!("listen on: http://{}/", socket.local_addr().unwrap());
+    println!("listen on: {}/", socket.local_addr().unwrap());
     let mut buf = [0u8; 1024];
     loop {
         match socket.recv_from(&mut buf) {
@@ -32,8 +32,9 @@ fn accept_loop() -> io::Result {
         };
     }
 }
+
 #[no_mangle]
 fn main() {
     println!("Hello, simple udp client!");
-    accept_loop().expect("test udp client failed");
+    recive_loop().expect("test udp client failed");
 }

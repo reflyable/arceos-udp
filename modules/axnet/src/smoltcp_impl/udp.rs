@@ -25,11 +25,13 @@ impl UdpSocket {
             local_addr: None,
         }
     }
+
     /// Returns the local address and port, or
     /// [`Err(NotConnected)`](AxError::NotConnected) if not connected.
     pub fn local_addr(&self) -> AxResult<SocketAddr> {
         self.local_addr.ok_or(AxError::NotConnected)
     }
+
     /// Binds an unbound socket to the given address and port.
     ///
     /// It's must be called before [`sendto`](Self::sendto) and

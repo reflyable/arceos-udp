@@ -2,8 +2,9 @@ use alloc::sync::Arc;
 use core::ffi::{c_char, c_int, c_void};
 use core::mem::size_of;
 
+use alloc::vec;
 use axerrno::{LinuxError, LinuxResult};
-use axnet::{resolve_socket_addr, Ipv4Addr, SocketAddr, TcpSocket, UdpSocket};
+use axnet::{resolve_socket_addr, IpAddr, Ipv4Addr, SocketAddr, TcpSocket, UdpSocket};
 
 use super::ctypes;
 use super::fd_ops::FileLike;
@@ -38,6 +39,40 @@ impl Socket {
         match self {
             Socket::Udp(udpsocket) => Ok(udpsocket.lock().recv_from(buf).map(|e| e.0)?),
             Socket::Tcp(tcpsocket) => Ok(tcpsocket.lock().recv(buf)?),
+        }
+    }
+
+    pub fn ready(&self) -> LinuxResult<[bool; 3]> {
+        match self {
+            Socket::Udp(udpsocket) => Ok(udpsocket.lock().is_ready()?),
+            Socket::Tcp(tcpsocket) => Ok(tcpsocket.lock().is_ready()?),
+        }
+    }
+
+    pub fn set_nonblock(&self, nonblock: bool) {
+        match self {
+            Socket::Udp(udpsocket) => udpsocket.lock().set_nonblock(nonblock),
+            Socket::Tcp(tcpsocket) => tcpsocket.lock().set_nonblock(nonblock),
+        }
+    }
+
+    fn local_addr(&self) -> LinuxResult<SocketAddr> {
+        match self {
+            Socket::Udp(udpsocket) => Ok(udpsocket
+                .lock()
+                .local_addr()
+                .unwrap_or_else(|_| (Ipv4Addr::from_bytes(&(0_u32).to_be_bytes()), 0).into())),
+            Socket::Tcp(tcpsocket) => Ok(tcpsocket
+                .lock()
+                .local_addr()
+                .unwrap_or_else(|_| (Ipv4Addr::from_bytes(&(0_u32).to_be_bytes()), 0).into())),
+        }
+    }
+
+    fn peer_addr(&self) -> LinuxResult<SocketAddr> {
+        match self {
+            Socket::Udp(udpsocket) => Ok(udpsocket.lock().peer_addr()?),
+            Socket::Tcp(tcpsocket) => Ok(tcpsocket.lock().peer_addr()?),
         }
     }
 
@@ -133,9 +168,19 @@ impl FileLike for Socket {
     fn into_any(self: Arc<Self>) -> Arc<dyn core::any::Any + Send + Sync> {
         self
     }
+
+    fn is_ready(&self) -> LinuxResult<[bool; 3]> {
+        self.ready()
+    }
+
+    fn set_status_flags(&self, arg: usize) -> LinuxResult {
+        self.set_nonblock((arg & ctypes::O_NONBLOCK as usize) > 0);
+        Ok(())
+    }
 }
 
 fn as_c_sockaddr(addr: &SocketAddr) -> ctypes::sockaddr {
+    debug!("    Sockaddr: {}", addr);
     return unsafe {
         *(&ctypes::sockaddr_in {
             sin_family: ctypes::AF_INET as u16,
@@ -178,10 +223,12 @@ pub unsafe extern "C" fn ax_socket(domain: c_int, socktype: c_int, protocol: c_i
     let (domain, socktype, protocol) = (domain as u32, socktype as u32, protocol as u32);
     ax_call_body!(ax_socket, {
         match (domain, socktype, protocol) {
-            (ctypes::AF_INET, ctypes::SOCK_STREAM, ctypes::IPPROTO_TCP) => {
+            (ctypes::AF_INET, ctypes::SOCK_STREAM, ctypes::IPPROTO_TCP)
+            | (ctypes::AF_INET, ctypes::SOCK_STREAM, 0) => {
                 Socket::Tcp(Mutex::new(TcpSocket::new())).add_to_fd_table()
             }
-            (ctypes::AF_INET, ctypes::SOCK_DGRAM, ctypes::IPPROTO_UDP) => {
+            (ctypes::AF_INET, ctypes::SOCK_DGRAM, ctypes::IPPROTO_UDP)
+            | (ctypes::AF_INET, ctypes::SOCK_DGRAM, 0) => {
                 Socket::Udp(Mutex::new(UdpSocket::new())).add_to_fd_table()
             }
             _ => Err(LinuxError::EINVAL),
@@ -400,23 +447,128 @@ pub unsafe extern "C" fn ax_shutdown(
 #[no_mangle]
 pub unsafe extern "C" fn ax_resolve_sockaddr(
     node: *const c_char,
+    service: *const c_char,
     addr: *mut ctypes::sockaddr,
     len: ctypes::size_t,
 ) -> c_int {
     let name = char_ptr_to_str(node);
+    let port = char_ptr_to_str(service);
     debug!(
-        "ax_resolve_sockaddr <= {:?} {:#x} {}",
-        name, addr as usize, len
+        "ax_resolve_sockaddr <= {:?} {:?} {:#x} {}",
+        name, port, addr as usize, len
     );
     ax_call_body!(ax_resolve_sockaddr, {
-        if addr.is_null() {
+        if addr.is_null() || (node.is_null() && service.is_null()) {
             return Err(LinuxError::EFAULT);
         }
         let addr_slice = unsafe { core::slice::from_raw_parts_mut(addr, len) };
-        let res = resolve_socket_addr(name?)?;
+        let res = if let Ok(domain) = name {
+            if let Ok(a) = domain.parse::<IpAddr>() {
+                vec![a]
+            } else {
+                resolve_socket_addr(domain).map_err(|_| LinuxError::EINVAL)?
+            }
+        } else {
+            vec![Ipv4Addr::new(127, 0, 0, 1).into()]
+        };
+
         for (i, item) in res.iter().enumerate().take(len) {
-            addr_slice[i] = as_c_sockaddr(&(*item, 0).into());
+            addr_slice[i] = as_c_sockaddr(
+                &(
+                    *item,
+                    port.map(|p| p.parse::<u16>().unwrap_or(0)).unwrap_or(0),
+                )
+                    .into(),
+            );
         }
         Ok(if len > res.len() { res.len() } else { len })
+    })
+}
+
+/// Query addresses for a domain name.
+///
+/// Return 0 if success.
+#[no_mangle]
+pub unsafe extern "C" fn ax_setsockopt(
+    sock_fd: c_int,
+    level: c_int,
+    optname: c_int,
+    _optval: *const c_void,
+    _optlen: ctypes::socklen_t,
+) -> c_int {
+    debug!("ax_setsockopt <= {} {} {}", sock_fd, level, optname);
+    ax_call_body!(ax_setsockopt, {
+        match level as u32 {
+            ctypes::SOL_SOCKET => match optname as u32 {
+                ctypes::SO_REUSEADDR => Ok(0),
+
+                _ => {
+                    warn!(
+                        " unsupported setsockopt parameters: level {}, opt {}",
+                        level, optname
+                    );
+                    Ok(0)
+                }
+            },
+            _ => {
+                warn!(
+                    " unsupported setsockopt parameters: level {}, opt {}",
+                    level, optname
+                );
+                Ok(0)
+            }
+        }
+    })
+}
+
+/// Get current address to which the socket sockfd is bound.
+#[no_mangle]
+pub unsafe extern "C" fn ax_getsockname(
+    sock_fd: c_int,
+    addr: *mut ctypes::sockaddr,
+    addrlen: *mut ctypes::socklen_t,
+) -> c_int {
+    debug!(
+        "ax_getsockname <= {} {:#x} {:#x}",
+        sock_fd, addr as usize, addrlen as usize
+    );
+    ax_call_body!(ax_getsockname, {
+        if addr.is_null() || addrlen.is_null() {
+            return Err(LinuxError::EFAULT);
+        }
+        if unsafe { *addrlen } < size_of::<ctypes::sockaddr>() as u32 {
+            return Err(LinuxError::EINVAL);
+        }
+        unsafe {
+            *addr = as_c_sockaddr(&Socket::from_fd(sock_fd)?.local_addr()?);
+            *addrlen = size_of::<ctypes::sockaddr>() as u32;
+        }
+        Ok(0)
+    })
+}
+
+/// Get peer address to which the socket sockfd is connected.
+#[no_mangle]
+pub unsafe extern "C" fn ax_getpeername(
+    sock_fd: c_int,
+    addr: *mut ctypes::sockaddr,
+    addrlen: *mut ctypes::socklen_t,
+) -> c_int {
+    debug!(
+        "ax_getpeername <= {} {:#x} {:#x}",
+        sock_fd, addr as usize, addrlen as usize
+    );
+    ax_call_body!(ax_getpeername, {
+        if addr.is_null() || addrlen.is_null() {
+            return Err(LinuxError::EFAULT);
+        }
+        if unsafe { *addrlen } < size_of::<ctypes::sockaddr>() as u32 {
+            return Err(LinuxError::EINVAL);
+        }
+        unsafe {
+            *addr = as_c_sockaddr(&Socket::from_fd(sock_fd)?.peer_addr()?);
+            *addrlen = size_of::<ctypes::sockaddr>() as u32;
+        }
+        Ok(0)
     })
 }

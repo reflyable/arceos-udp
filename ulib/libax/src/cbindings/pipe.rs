@@ -174,6 +174,14 @@ impl FileLike for Pipe {
     fn into_any(self: Arc<Self>) -> Arc<dyn core::any::Any + Send + Sync> {
         self
     }
+
+    fn is_ready(&self) -> LinuxResult<[bool; 3]> {
+        Ok([self.readable(), self.writable(), false])
+    }
+
+    fn set_status_flags(&self, _arg: usize) -> LinuxResult {
+        Ok(())
+    }
 }
 
 /// Create a pipe

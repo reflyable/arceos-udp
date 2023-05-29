@@ -1,12 +1,15 @@
-use alloc::sync::Arc;
-use core::ffi::{c_int, c_void};
-
-use axerrno::{LinuxError, LinuxResult};
-use flatten_objects::FlattenObjects;
-use spin::RwLock;
-
 use super::ctypes;
 use crate::io::{stdin, stdout};
+use alloc::sync::Arc;
+use alloc::vec::Vec;
+use axerrno::{LinuxError, LinuxResult};
+use axhal::time::current_time;
+use core::{
+    ffi::{c_int, c_void},
+    time::Duration,
+};
+use flatten_objects::FlattenObjects;
+use spin::RwLock;
 
 pub const AX_FILE_LIMIT: usize = 1024;
 
@@ -15,6 +18,8 @@ pub trait FileLike: Send + Sync {
     fn write(&self, buf: &[u8]) -> LinuxResult<usize>;
     fn stat(&self) -> LinuxResult<ctypes::stat>;
     fn into_any(self: Arc<Self>) -> Arc<dyn core::any::Any + Send + Sync>;
+    fn is_ready(&self) -> LinuxResult<[bool; 3]>;
+    fn set_status_flags(&self, arg: usize) -> LinuxResult;
 }
 
 lazy_static::lazy_static! {
@@ -166,9 +171,100 @@ pub unsafe extern "C" fn ax_fcntl(fd: c_int, cmd: c_int, arg: usize) -> c_int {
                 // TODO: Change fd flags
                 dup_fd(fd)
             }
+            ctypes::F_SETFL => {
+                get_file_like(fd)?.set_status_flags(arg)?;
+                Ok(0)
+            }
             _ => {
                 warn!("unsupported fcntl parameters: cmd {}", cmd);
                 Ok(0)
+            }
+        }
+    })
+}
+
+fn getbit(fds: *mut ctypes::fd_set, n: usize) -> bool {
+    assert!(n < 1024);
+    ((unsafe { *fds }.fds_bits[n / 64]) & (1 << (n % 64))) > 0
+}
+
+fn setbit(fds: *mut ctypes::fd_set, n: usize) {
+    assert!(n < 1024);
+
+    unsafe {
+        // debug!("    setbit: {} {:?}", n, (*fds).fds_bits);
+        (*fds).fds_bits[n / 64] |= 1 << (n % 64);
+        // debug!("    setbit: {} => {:?}", n, (*fds).fds_bits);
+    };
+}
+
+fn clrfds(fds: *mut ctypes::fd_set) {
+    unsafe { *fds = ctypes::fd_set { fds_bits: [0; 16] } };
+}
+
+/// Monitor multiple file descriptors, waiting until one or more of the file descriptors become "ready" for some class of I/O operation
+#[no_mangle]
+pub unsafe extern "C" fn ax_select(
+    n: c_int,
+    rfds: *mut ctypes::fd_set,
+    wfds: *mut ctypes::fd_set,
+    efds: *mut ctypes::fd_set,
+    tv: *mut ctypes::timeval,
+) -> c_int {
+    debug!(
+        "ax_select <= {} {:#x} {:#x} {:#x}",
+        n, rfds as usize, wfds as usize, efds as usize
+    );
+    let fds = [rfds, wfds, efds];
+    let mut res = Vec::<(u16, [bool; 3])>::new();
+    for i in 0..1024 {
+        let mut rec = [false; 3];
+        for j in 0..3 {
+            rec[j] = (!fds[j].is_null()) && (getbit(fds[j], i));
+        }
+        if rec[0] || rec[1] || rec[2] {
+            res.push((i as u16, rec));
+        }
+    }
+    for i in fds {
+        if !i.is_null() {
+            clrfds(i);
+        }
+    }
+    let time: Option<Duration> = if tv.is_null() {
+        None
+    } else {
+        Some(Duration::from_micros(unsafe {
+            ((*tv).tv_sec * 1000 * 1000) as u64 + (*tv).tv_usec as u64
+        }))
+    };
+    debug!("    fds: {:?} time: {:?}", res, time);
+    ax_call_body!(ax_select, {
+        let start_time = current_time();
+        loop {
+            if let Some(dur) = time {
+                if dur < current_time() - start_time {
+                    return Ok(0);
+                }
+            }
+            let mut res_num = 0;
+            for (index, r) in &res {
+                let ready = get_file_like((*index).into())?.is_ready()?;
+                for i in 0..3 {
+                    if r[i] && ready[i] {
+                        setbit(fds[i], (*index).into());
+                        res_num += 1;
+                    }
+                }
+            }
+            if res_num > 0 {
+                for i in fds {
+                    if !i.is_null() {
+                        debug!("    result {:?} ", (*i).fds_bits);
+                    }
+                }
+
+                return Ok(res_num);
             }
         }
     })

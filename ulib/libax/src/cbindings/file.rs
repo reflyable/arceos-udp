@@ -59,6 +59,14 @@ impl FileLike for File {
     fn into_any(self: Arc<Self>) -> Arc<dyn core::any::Any + Send + Sync> {
         self
     }
+
+    fn is_ready(&self) -> LinuxResult<[bool; 3]> {
+        Ok([true, true, false])
+    }
+
+    fn set_status_flags(&self, _arg: usize) -> LinuxResult {
+        Ok(())
+    }
 }
 
 /// Convert open flags to [`OpenOptions`].

@@ -62,6 +62,14 @@ impl super::fd_ops::FileLike for crate::io::Stdin {
     fn into_any(self: Arc<Self>) -> Arc<dyn core::any::Any + Send + Sync> {
         self
     }
+
+    fn is_ready(&self) -> LinuxResult<[bool; 3]> {
+        Ok([true, true, false])
+    }
+
+    fn set_status_flags(&self, _arg: usize) -> LinuxResult {
+        Ok(())
+    }
 }
 
 #[cfg(feature = "alloc")]
@@ -86,5 +94,13 @@ impl super::fd_ops::FileLike for crate::io::Stdout {
 
     fn into_any(self: Arc<Self>) -> Arc<dyn core::any::Any + Send + Sync> {
         self
+    }
+
+    fn is_ready(&self) -> LinuxResult<[bool; 3]> {
+        Ok([true, true, false])
+    }
+
+    fn set_status_flags(&self, _arg: usize) -> LinuxResult {
+        Ok(())
     }
 }

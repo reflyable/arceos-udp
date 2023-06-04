@@ -58,8 +58,23 @@
 ![iperf收包](https://github.com/reflyable/arceos-udp/assets/71587404/c7632029-ff26-4ffa-913f-00715851b2cc)
 - 发包
 
-![image](https://github.com/reflyable/arceos-udp/assets/71587404/09816ea8-0ebb-4c6c-94e8-4c9502c49e93)
+![image](https://github.com/reflyable/arceos-udp/assets/71587404/670c7dd7-3e4a-4837-b522-2e4426b6becc)
 
-## 4.未来展望
+
+## 4.协议栈性能测试
+使用iperf进行测试
+### 默认参数
+||收包|发包|
+|:-:|:-:|:-:|
+|TCP|1.10Mb/s|60Mb/s|
+|UDP|37Mb/s|57Mb/s |
+
+### 调整参数
+||收包|发包|
+|:-:|:-:|:-:|
+|TCP|201Mb/s|80Mb/s|
+|UDP|80Mb/s|581Mb/s|
+
+## 5.未来展望
 - 优化驱动层代码，(有理有据地)调整参数提升iperf tcp性能
 - 完善c库支持
